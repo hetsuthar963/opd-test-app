@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = "mysql://2qXBuXd6t8mfRfW.root:PeXngN5w8dJ23vNR@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test?sslaccept=strict"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(RECEPTIONIST)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  doctor       Doctor?
+
+  @@map("users")
+}
+
+model Patient {
+  id            String         @id @default(cuid())
+  patientCode   String         @unique
+  name          String
+  gender        Gender
+  age           Int
+  phone         String         @unique
+  address       String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  appointments  Appointment[]
+  consultations Consultation[]
+
+  @@index([name, phone])
+  @@map("patients")
+}
+
+model Doctor {
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  name           String
+  specialization String
+  registrationNo String         @unique
+  isAvailable    Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  appointments   Appointment[]
+  consultations  Consultation[]
+  user           User           @relation(fields: [userId], references: [id])
+
+  @@map("doctors")
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  patientId       String
+  doctorId        String
+  appointmentDate DateTime          @db.Date
+  appointmentTime String
+  status          AppointmentStatus @default(SCHEDULED)
+  tokenNumber     Int
+  reason          String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  patient         Patient           @relation(fields: [patientId], references: [id])
+  consultation    Consultation?
+
+  @@index([appointmentDate, doctorId])
+  @@index([doctorId], map: "appointments_doctorId_fkey")
+  @@index([patientId], map: "appointments_patientId_fkey")
+  @@map("appointments")
+}
+
+model Consultation {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  patientId     String
+  doctorId      String
+  bloodPressure String?
+  temperature   Float?
+  notes         String?     @db.Text
+  isCompleted   Boolean     @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  doctor        Doctor      @relation(fields: [doctorId], references: [id])
+  patient       Patient     @relation(fields: [patientId], references: [id])
+
+  @@index([doctorId], map: "consultations_doctorId_fkey")
+  @@index([patientId], map: "consultations_patientId_fkey")
+  @@map("consultations")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  RECEPTIONIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
